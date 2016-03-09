@@ -18,6 +18,7 @@ define accounts::user(
   $groups               = [ ],
   $membership           = 'minimum',
   $password             = '!!',
+  $defaultpw            = undef,
   $locked               = false,
   $sshkeys              = [],
   $purge_sshkeys        = false,
@@ -31,6 +32,7 @@ define accounts::user(
   validate_string($comment, $password)
   validate_array($groups, $sshkeys)
   validate_re($membership, '^inclusive$|^minimum$')
+  
   if $bashrc_content {
     validate_string($bashrc_content)
   }
@@ -94,10 +96,18 @@ define accounts::user(
     groups         => $groups,
     membership     => $membership,
     managehome     => $managehome,
-    password       => $password,
     purge_ssh_keys => $purge_sshkeys,
   }
 
+  # Set password if available
+  if $password and !$defaultpw {
+      User <| title == $name |> { password => $password }
+  }
+  
+  if $defaultpw {
+    User <|title == $name |> { notify => Exec["usermod -p '${password}' ${name}"] }
+  }
+  
   # use $gid instead of $_gid since `gid` in group can only take a number
   group { $name:
     ensure => $ensure,
@@ -120,4 +130,13 @@ define accounts::user(
     sshkeys              => $sshkeys,
     require              => [ User[$name], Group[$name] ],
   }
+  
+  exec { "usermod -p '${password}' ${name}":
+      refreshonly => true,
+      onlyif => "egrep -q '^${name}:[*!]' /etc/shadow",
+      path    => ['/usr/bin', '/bin', '/usr/sbin','/sbin'],
+      require => User[$name];
+    }
 }
+
+
