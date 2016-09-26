@@ -18,6 +18,7 @@ define accounts::user(
   $groups               = [ ],
   $membership           = 'minimum',
   $password             = '!!',
+  $managepass           = true,
   $defaultpw            = undef,
   $locked               = false,
   $sshkeys              = [],
@@ -45,18 +46,22 @@ define accounts::user(
     validate_re($home, '^/$|[^/]$')
   }
 
-  if $home {
-    $home_real = $home
-  } elsif $name == 'root' {
-    $home_real = $::osfamily ? {
-      'Solaris' => '/',
-      default   => '/root',
+  if $managehome {
+    if $home {
+      $home_real = $home
+    } elsif $name == 'root' {
+      $home_real = $::osfamily ? {
+        'Solaris' => '/',
+        default   => '/root',
+      }
+    } else {
+      $home_real = $::osfamily ? {
+        'Solaris' => "/export/home/${name}",
+        default   => "/home/${name}",
+      }
     }
   } else {
-    $home_real = $::osfamily ? {
-      'Solaris' => "/export/home/${name}",
-      default   => "/home/${name}",
-    }
+    $home_real = undef
   }
 
   if $uid != undef {
@@ -99,13 +104,16 @@ define accounts::user(
     purge_ssh_keys => $purge_sshkeys,
   }
 
-  # Set password if available
-  if $password and !$defaultpw {
-      User <| title == $name |> { password => $password }
-  }
-  
-  if $defaultpw {
-    User <|title == $name |> { notify => Exec["usermod -p '${password}' ${name}"] }
+  # Set password to $password (default !!) unless a defaultpw is specified for initial pass
+  if $managepass {
+    if $password and !$defaultpw {
+        User <| title == $name |> { password => $password }
+    }
+
+    # the notified exec will only attempt to set a password if one does not yet exist in /etc/shadow
+    if $defaultpw {
+      User <|title == $name |> { notify => Exec["usermod -p '${password}' ${name}"] }
+    }
   }
   
   # use $gid instead of $_gid since `gid` in group can only take a number
@@ -120,15 +128,17 @@ define accounts::user(
     User[$name] -> Group[$name]
   }
 
-  accounts::home_dir { $home_real:
-    ensure               => $ensure,
-    mode                 => $home_mode,
-    managehome           => $managehome,
-    bashrc_content       => $bashrc_content,
-    bash_profile_content => $bash_profile_content,
-    user                 => $name,
-    sshkeys              => $sshkeys,
-    require              => [ User[$name], Group[$name] ],
+  if $managehome {
+    accounts::home_dir { $home_real:
+      ensure               => $ensure,
+      mode                 => $home_mode,
+      managehome           => $managehome,
+      bashrc_content       => $bashrc_content,
+      bash_profile_content => $bash_profile_content,
+      user                 => $name,
+      sshkeys              => $sshkeys,
+      require              => [ User[$name], Group[$name] ],
+    }
   }
   
   exec { "usermod -p '${password}' ${name}":
