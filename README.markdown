@@ -19,6 +19,8 @@ The accounts module manages resources related to login and service accounts. Thi
 
 This module works on many UNIX/Linux operating systems. It does not support configuring accounts on Microsoft Windows platforms.
 
+This fork adds the managepass and defaultpw parameters.  If managepass = false then no attempt is made to manage account password at creation or after.  If defaultpw is set to true then the password of the account is set at initial creation but  not otherwise managed.  
+
 ## Setup
 
 ### Beginning with accounts
@@ -160,6 +162,14 @@ Establishes whether specified groups should be considered the complete list (inc
 #### `password`
 
 The user's password, in whatever encrypted format the local machine requires. Default: '!!', which prevents the user from logging in with a password.
+
+#### `defaultpw`
+
+If set to true, then password is only set at account creation time and not managed after that point.
+
+#### `managepass`
+
+Whether to manage the password at all.  If set to false no password will be specified to the user creation resource (user will be unable to use any password to login).
 
 #### `purge_sshkeys`
 
