@@ -121,6 +121,7 @@ define accounts::user(
   group { $name:
     ensure => $ensure,
     gid    => $gid,
+    forcelocal => true
   }
 
   if $ensure == 'present' {
