@@ -33,7 +33,7 @@ define accounts::user(
   validate_string($comment, $password)
   validate_array($groups, $sshkeys)
   validate_re($membership, '^inclusive$|^minimum$')
-  
+
   if $bashrc_content {
     validate_string($bashrc_content)
   }
@@ -102,6 +102,7 @@ define accounts::user(
     membership     => $membership,
     managehome     => $managehome,
     purge_ssh_keys => $purge_sshkeys,
+    forcelocal     => true
   }
 
   # Set password to $password (default !!) unless a defaultpw is specified for initial pass
@@ -115,7 +116,7 @@ define accounts::user(
       User <|title == $name |> { notify => Exec["usermod -p '${password}' ${name}"] }
     }
   }
-  
+
   # use $gid instead of $_gid since `gid` in group can only take a number
   group { $name:
     ensure => $ensure,
@@ -140,7 +141,7 @@ define accounts::user(
       require              => [ User[$name], Group[$name] ],
     }
   }
-  
+
   exec { "usermod -p '${password}' ${name}":
       refreshonly => true,
       onlyif => "egrep -q '^${name}:[*!]' /etc/shadow",
