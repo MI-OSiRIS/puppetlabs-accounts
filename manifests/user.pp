@@ -121,6 +121,7 @@ define accounts::user(
   group { $name:
     ensure => $ensure,
     gid    => $gid,
+    provider => 'groupadd',
     forcelocal => true
   }
 
